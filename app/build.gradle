@@ -71,4 +71,6 @@ dependencies {
     implementation "com.github.moxy-community:moxy-material:$moxy_version"
 
     implementation 'com.github.zomato:androidphotofilters:1.0.2'
+
+    implementation 'com.prof.rssparser:rssparser:2.1.1'
 }
