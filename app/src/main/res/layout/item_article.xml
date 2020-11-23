@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:padding="@dimen/normal_padding"
+        android:layout_width="match_parent"
+        android:layout_height="50dp">
+
+        <ImageView
+            android:id="@+id/item_article_image"
+            tools:src="@drawable/design_placeholder"
+            android:layout_marginRight="@dimen/normal_margin_right"
+            android:layout_width="0dp"
+            android:layout_weight="0.4"
+            android:layout_height="match_parent"/>
+
+        <TextView
+            android:id="@+id/item_article_content"
+            tools:text="Lorem ipsum Lorem ipsum Lorem ipsum Lorem
+                    ipsum Lorem ipsum Lorem ipsum"
+            android:layout_width="0dp"
+            android:layout_weight="0.6"
+            android:layout_height="match_parent"/>
+
+    </LinearLayout>
+
+    <View
+        android:background="@color/news_separator"
+        android:layout_marginTop="4dp"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"/>
+    
+</LinearLayout>
