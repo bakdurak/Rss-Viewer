@@ -4,6 +4,21 @@ apply plugin: 'kotlin-android-extensions'
 apply plugin: 'kotlin-kapt'
 
 android {
+    signingConfigs {
+        release {
+            storeFile file('D:\\GitHub\\rss-viewer\\test-key.keystore')
+            storePassword '123456'
+            keyAlias = 'alias_name'
+            keyPassword '123456'
+        }
+        debug {
+            storeFile file('D:\\GitHub\\rss-viewer\\test-key.keystore')
+            keyAlias = 'alias_name'
+            storePassword '123456'
+            keyPassword '123456'
+        }
+    }
+
     compileSdkVersion 29
     buildToolsVersion "29.0.3"
 
@@ -18,9 +33,18 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "ENV", '"debug"')
+            signingConfig signingConfigs.debug
+        }
+
         release {
+            buildConfigField("String", "ENV", '"prod"')
             minifyEnabled false
+            signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+            debuggable true
         }
     }
 
