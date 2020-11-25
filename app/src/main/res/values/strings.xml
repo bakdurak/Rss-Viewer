@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">rss-viewer</string>
+    <string name="brightness">Brightness</string>
+    <string name="color_overlay">Color overlay</string>
+    <string name="saturation">Saturation</string>
+    <string name="rss_input_placeholder">Enter rss resource url</string>
+    <string name="submit">Submit</string>
+    <string name="invalid_url">Invalid url</string>
+    <string name="loading_content_error">Loading content error or wrong url is passed</string>
+    <string name="apply_filers_error">Some error has occurred during applying filters</string>
 </resources>
