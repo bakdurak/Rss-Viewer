@@ -9,10 +9,11 @@
         android:orientation="horizontal"
         android:padding="@dimen/normal_padding"
         android:layout_width="match_parent"
-        android:layout_height="50dp">
+        android:layout_height="120dp">
 
         <ImageView
             android:id="@+id/item_article_image"
+            android:scaleType="fitCenter"
             tools:src="@drawable/design_placeholder"
             android:layout_marginRight="@dimen/normal_margin_right"
             android:layout_width="0dp"
@@ -30,7 +31,7 @@
     </LinearLayout>
 
     <View
-        android:background="@color/news_separator"
+        android:background="@color/gray"
         android:layout_marginTop="4dp"
         android:layout_width="match_parent"
         android:layout_height="1dp"/>
