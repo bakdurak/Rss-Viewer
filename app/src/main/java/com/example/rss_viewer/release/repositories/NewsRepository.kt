@@ -1,8 +1,11 @@
 package com.example.rss_viewer.release.repositories
 
-import com.prof.rssparser.Channel
+import com.example.rss_viewer.release.domain.ArticleDomain
+import com.example.rss_viewer.release.utils.ResponseState
 import io.reactivex.Observable
 
-interface NewsRepository {
-    fun getNewsByUrl(url: String): Observable<Channel>
+interface NewsRepository : Repository {
+    fun getNewsByUrl(url: String, start: Int, count: Int)
+
+    fun observeNews(): Observable<ResponseState<List<ArticleDomain>>>
 }
