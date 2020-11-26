@@ -1,6 +1,7 @@
 package com.example.rss_viewer.release
 
 import android.app.Application
+import android.content.Context
 import com.example.rss_viewer.BuildConfig
 import com.example.rss_viewer.debug.di.components.DaggerDebugAppComponent
 import com.example.rss_viewer.release.di.components.AppComponent
@@ -29,5 +30,9 @@ class App : Application() {
             DaggerAppComponent.builder()
                 .build()
         }
+    }
+
+    fun getAppComponent(): AppComponent {
+        return appComponent
     }
 }
