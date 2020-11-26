@@ -8,4 +8,4 @@ Lenta without filters       |  Lenta with color overlay |  Random resource with 
 * [glide](https://github.com/bumptech/glide) - image loading
 * [moxy](https://github.com/moxy-community/Moxy) - MVP framework
 * [photoFiltersSDK](https://github.com/Zomato/AndroidPhotoFilters) - image filters library
-* [rss parser](https://github.com/prof18/RSS-Parser) - RSS parser with using [okHttpClient](https://square.github.io/okhttp/4.x/okhttp/okhttp3/-ok-http-client/) for retrieving data
+* [rss parser](https://github.com/prof18/RSS-Parser) - RSS parser using [okHttpClient](https://square.github.io/okhttp/4.x/okhttp/okhttp3/-ok-http-client/) for retrieving data
