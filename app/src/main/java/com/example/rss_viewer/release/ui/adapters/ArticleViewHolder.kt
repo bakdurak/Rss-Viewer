@@ -46,8 +46,10 @@ class ArticleViewHolder(view: View, private val glide: RequestManager): Recycler
 
     private var image: ImageView = view.findViewById(R.id.item_article_image)
     private var title: TextView = view.findViewById(R.id.item_article_content)
+    private lateinit var mArticle: ArticleDomain
 
     fun bind(article: ArticleDomain) {
+        mArticle = article
         title.text = article.title
 
         if (article.srcBitMap != null && article.currentBitmap != null) {
@@ -64,7 +66,11 @@ class ArticleViewHolder(view: View, private val glide: RequestManager): Recycler
                     override fun onLoadFailed(errorDrawable: Drawable?) {
                         article.srcBitMap = getBitmapById(R.drawable.network_error_placeholder)
                         article.currentBitmap = article.srcBitMap
-                        image.setImageBitmap(article.srcBitMap)
+                        // Avoid loading image artefact
+                        val oldArticleFromClosure = mArticle != article
+                        if (!oldArticleFromClosure) {
+                            image.setImageBitmap(article.srcBitMap)
+                        }
                     }
 
                     override fun onResourceReady(
@@ -73,7 +79,11 @@ class ArticleViewHolder(view: View, private val glide: RequestManager): Recycler
                     ) {
                         article.srcBitMap = resource
                         article.currentBitmap = article.srcBitMap
-                        image.setImageBitmap(article.srcBitMap)
+                        // Avoid loading image artefact
+                        val oldArticleFromClosure = mArticle != article
+                        if (!oldArticleFromClosure) {
+                            image.setImageBitmap(article.srcBitMap)
+                        }
                     }
                 })
         }
@@ -85,7 +95,9 @@ class ArticleViewHolder(view: View, private val glide: RequestManager): Recycler
         }
     }
 
+    // Don't clear() resource to avoid to complicated logic in presenter.
+    // Release resource only after glide's associated component is destroyed (activity, fragment)
     fun recycle() {
-        glide.clear(image)
+        image.setImageResource(R.drawable.loading_article_placeholder)
     }
 }
