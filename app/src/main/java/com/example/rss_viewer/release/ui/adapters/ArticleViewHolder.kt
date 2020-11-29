@@ -11,7 +11,9 @@ import com.bumptech.glide.RequestManager
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.target.SimpleTarget
 import com.bumptech.glide.request.target.Target
+import com.bumptech.glide.request.transition.Transition
 import com.example.rss_viewer.R
 import com.example.rss_viewer.release.App
 import com.example.rss_viewer.release.domain.ArticleDomain
@@ -58,32 +60,22 @@ class ArticleViewHolder(view: View, private val glide: RequestManager): Recycler
                 .asBitmap()
                 .load(article.imageUrl)
                 .placeholder(R.drawable.loading_article_placeholder)
-                .error(R.drawable.network_error_placeholder)
-                .listener(object : RequestListener<Bitmap> {
-                    override fun onLoadFailed(
-                        e: GlideException?,
-                        model: Any?,
-                        target: Target<Bitmap>?,
-                        isFirstResource: Boolean
-                    ): Boolean {
+                .into(object : SimpleTarget<Bitmap>() {
+                    override fun onLoadFailed(errorDrawable: Drawable?) {
                         article.srcBitMap = getBitmapById(R.drawable.network_error_placeholder)
                         article.currentBitmap = article.srcBitMap
-                        return false
+                        image.setImageBitmap(article.srcBitMap)
                     }
 
                     override fun onResourceReady(
-                        resource: Bitmap?,
-                        model: Any?,
-                        target: Target<Bitmap>?,
-                        dataSource: DataSource?,
-                        isFirstResource: Boolean
-                    ): Boolean {
+                        resource: Bitmap,
+                        transition: Transition<in Bitmap>?
+                    ) {
                         article.srcBitMap = resource
                         article.currentBitmap = article.srcBitMap
-                        return false
+                        image.setImageBitmap(article.srcBitMap)
                     }
                 })
-                .into(image)
         }
         else {
             val bitmap = getBitmapById(R.drawable.no_image_placeholder)
