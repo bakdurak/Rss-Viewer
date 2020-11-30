@@ -9,6 +9,7 @@ import android.widget.EditText
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.bumptech.glide.RequestManager
 import com.example.rss_viewer.R
 import com.example.rss_viewer.release.domain.ArticleDomain
 import com.example.rss_viewer.release.presenters.NewsPresenter
@@ -48,6 +49,7 @@ class NewsActivity : MvpAppCompatActivity(), NewsView {
     private lateinit var layoutManager: LinearLayoutManager
     private lateinit var rssUrlEditText: EditText
     private lateinit var submitButton: Button
+    private lateinit var glide: RequestManager
     private var scrollDown = true
     private var currentRssUrl = DEFAULT_RSS_URL
 
@@ -57,6 +59,8 @@ class NewsActivity : MvpAppCompatActivity(), NewsView {
         supportActionBar!!.hide()
 
         setContentView(R.layout.activity_news)
+
+        glide = Glide.with(this)
 
         rootView = findViewById(android.R.id.content)
         brightnessButton = findViewById(R.id.activity_news_button_brightness)
@@ -84,11 +88,11 @@ class NewsActivity : MvpAppCompatActivity(), NewsView {
             LOAD_ITEMS_THRESHOLD,
             this::onScrollCallback,
             this::stopLoadConditionCallback,
-            Glide.with(this)
+            glide
         )
         recyclerView.adapter = adapter
 
-        presenter.onScroll(currentRssUrl, LOAD_ITEMS_CNT)
+        presenter.onScroll(currentRssUrl, LOAD_ITEMS_CNT, glide)
     }
 
     override fun appendArticles(articles: List<ArticleDomain>) {
@@ -96,7 +100,7 @@ class NewsActivity : MvpAppCompatActivity(), NewsView {
     }
 
     private fun onScrollCallback() {
-        presenter.onScroll(currentRssUrl, LOAD_ITEMS_CNT)
+        presenter.onScroll(currentRssUrl, LOAD_ITEMS_CNT, glide)
     }
 
     private fun stopLoadConditionCallback(nextItems: List<ArticleDomain>): Boolean = nextItems.isNotEmpty()
@@ -131,11 +135,11 @@ class NewsActivity : MvpAppCompatActivity(), NewsView {
             LOAD_ITEMS_THRESHOLD,
             this::onScrollCallback,
             this::stopLoadConditionCallback,
-            Glide.with(this)
+            glide
         )
         recyclerView.adapter = adapter
 
-        presenter.onScroll(currentRssUrl, LOAD_ITEMS_CNT)
+        presenter.onScroll(currentRssUrl, LOAD_ITEMS_CNT, glide)
     }
 
     override fun showWrongUrlError() {

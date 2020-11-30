@@ -1,8 +1,15 @@
 package com.example.rss_viewer.release.presenters
 
 import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import android.webkit.URLUtil
 import androidx.core.math.MathUtils
+import com.bumptech.glide.RequestManager
+import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.target.Target
+import com.example.rss_viewer.R
 import com.example.rss_viewer.release.App
 import com.example.rss_viewer.release.domain.ArticleDomain
 import com.example.rss_viewer.release.repositories.NewsRepository
@@ -19,6 +26,7 @@ import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import moxy.InjectViewState
 import moxy.MvpPresenter
+import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 
 @InjectViewState
@@ -30,29 +38,22 @@ class NewsPresenter : MvpPresenter<NewsView>() {
     private var currentResourceUrl: String? = null
     private var currentOffset: Int = 0
     private val filter = Filter()
+    @Volatile
+    private var currentFilter: NewsPresenter.Filter? = null
+    private lateinit var glide: RequestManager
 
     init {
         App.instance.getAppComponent().inject(this)
-
-        val disposable = repository.observeNews()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe({
-                when(it) {
-                    is ResponseState.Success -> viewState.appendArticles(it.data)
-                    is ResponseState.Error -> viewState.showLoadingContentError()
-                }
-            }, {
-                viewState.showLoadingContentError()
-            })
-        disposables.add(disposable)
+        observeNews()
     }
 
-    fun onScroll(url: String, itemsCount: Int) {
-        // Flush offset
+    fun onScroll(url: String, itemsCount: Int, glide: RequestManager) {
+        this.glide = glide
+        // Flush state
         if (!currentResourceUrl.equals(url)) {
             currentResourceUrl = url
             currentOffset = 0
+            currentFilter = null
         }
 
         repository.getNewsByUrl(url, currentOffset, itemsCount)
@@ -77,6 +78,8 @@ class NewsPresenter : MvpPresenter<NewsView>() {
         scrollDown: Boolean,
         articles: List<ArticleDomain>
     ) {
+        currentFilter = type
+
         viewState.toggleButtons(false)
         setUpFilter(type)
 
@@ -94,9 +97,7 @@ class NewsPresenter : MvpPresenter<NewsView>() {
             .subscribeOn(Schedulers.computation())
             .observeOn(AndroidSchedulers.mainThread())
             // Notify view
-            .map {
-                viewState.updateImages(it, firstVisibleItem, lastVisible)
-            }
+            .map { viewState.updateImages(it, firstVisibleItem, lastVisible) }
             .observeOn(Schedulers.computation())
             // Then according to scroll direction
             .map {
@@ -110,9 +111,7 @@ class NewsPresenter : MvpPresenter<NewsView>() {
             }
             .observeOn(AndroidSchedulers.mainThread())
             // Notify view
-            .map {
-                viewState.updateImages(it.images, it.from, it.to)
-            }
+            .map { viewState.updateImages(it.images, it.from, it.to) }
             .observeOn(Schedulers.computation())
             // Then rest images
             .map {
@@ -125,15 +124,139 @@ class NewsPresenter : MvpPresenter<NewsView>() {
                 )
             }
             .observeOn(AndroidSchedulers.mainThread())
-            .doFinally {
-                viewState.toggleButtons(true)
-            }
+            .doFinally { viewState.toggleButtons(true) }
             .subscribe({
                 viewState.updateImages(it.images, it.from, it.to)
             }, {
                 viewState.showApplyFiltersError()
             })
         disposables.add(disposable)
+    }
+
+    private fun observeNews() {
+        val disposable = repository.observeNews()
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({response ->
+                when(response) {
+                    is ResponseState.Success -> {
+                        val articleCnt = response.data.size
+                        val repositoryDrained = articleCnt == 0
+                        if (repositoryDrained) {
+                            viewState.appendArticles(response.data)
+                        }
+                        else {
+                            val disposable = downloadImages(response.data)
+                                .subscribeOn(Schedulers.io())
+                                .observeOn(Schedulers.computation())
+                                .map {
+                                    val shouldApplyFilter = currentFilter != null
+                                    if (shouldApplyFilter) {
+                                        return@map ArticleMeta(processImage(it), true)
+                                    }
+                                    else {
+                                        return@map ArticleMeta(it, false)
+                                    }
+                                }
+                                .buffer(articleCnt)
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .subscribe({articles ->
+                                    val shouldApplyFilter = currentFilter != null
+                                    val unprocessedArticles = articles.filter { !it.withFilters }
+                                    // Attention: consider case when UI thread busy with something
+                                    // while computation thread(above) does it's job
+                                    // then UI thread cannot set currentFilter variable on time
+                                    // therefore some images will not be processed with filters.
+                                    // Because at the current time we are in UI thread
+                                    // then now we will definitely process images
+                                    // if some were not processed because of above reason
+                                    if (shouldApplyFilter && unprocessedArticles.isNotEmpty()) {
+                                        val disposable = Observable.create<ArticleDomain> {emitter ->
+                                            unprocessedArticles.forEach {
+                                                emitter.onNext(processImage(it.article))
+                                            }
+                                        }
+                                            .subscribeOn(Schedulers.computation())
+                                            .buffer(unprocessedArticles.size)
+                                            .observeOn(AndroidSchedulers.mainThread())
+                                            .subscribe({
+                                                viewState.appendArticles(it)
+                                            }, {
+                                                viewState.showLoadingContentError()
+                                            })
+                                        disposables.add(disposable)
+                                    }
+                                    else {
+                                        viewState.appendArticles(ArticleMeta.toArticleDomain(articles))
+                                    }
+                                }, {
+                                    viewState.showLoadingContentError()
+                                })
+                            disposables.add(disposable)
+                        }
+                    }
+                    is ResponseState.Error -> viewState.showLoadingContentError()
+                }
+            }, {
+                viewState.showLoadingContentError()
+            })
+        disposables.add(disposable)
+    }
+
+    private fun downloadImages(articles: List<ArticleDomain>): Observable<ArticleDomain> {
+        return Observable.create {emitter ->
+            articles.forEach {article ->
+                if (article.hasImage()) {
+                    glide
+                        .asBitmap()
+                        .load(article.imageUrl)
+                        .listener(object : RequestListener<Bitmap> {
+                            override fun onLoadFailed(
+                                e: GlideException?,
+                                model: Any?,
+                                target: Target<Bitmap>?,
+                                isFirstResource: Boolean
+                            ): Boolean {
+                                // TODO: Get rid of android dependencies
+                                val placeholderDrawable = App
+                                    .instance
+                                    .resources
+                                    .getDrawable(R.drawable.network_error_placeholder)
+                                placeholderDrawable as BitmapDrawable
+                                article.srcBitMap = placeholderDrawable.bitmap
+                                article.currentBitmap = article.srcBitMap
+                                emitter.onNext(article)
+                                return false
+                            }
+
+                            override fun onResourceReady(
+                                resource: Bitmap?,
+                                model: Any?,
+                                target: Target<Bitmap>?,
+                                dataSource: DataSource?,
+                                isFirstResource: Boolean
+                            ): Boolean {
+                                article.srcBitMap = resource
+                                article.currentBitmap = article.srcBitMap
+                                emitter.onNext(article)
+                                return false
+                            }
+                        })
+                        .submit()
+                }
+                else {
+                    // TODO: Get rid of android dependencies
+                    val placeholderDrawable = App
+                        .instance
+                        .resources
+                        .getDrawable(R.drawable.no_image_placeholder)
+                    placeholderDrawable as BitmapDrawable
+                    article.srcBitMap = placeholderDrawable.bitmap
+                    article.currentBitmap = article.srcBitMap
+                    emitter.onNext(article)
+                }
+            }
+        }
     }
 
     private fun processImage(
@@ -147,6 +270,14 @@ class NewsPresenter : MvpPresenter<NewsView>() {
             val processedBitmap = filter.processFilter(newBitmap)
             dst[position] = processedBitmap
         }
+    }
+
+    private fun processImage(article: ArticleDomain): ArticleDomain {
+        val oldBitmap = article.srcBitMap
+        val newBitmap = oldBitmap!!.copy(oldBitmap.config, true)
+        val processedBitmap = filter.processFilter(newBitmap)
+        article.currentBitmap = processedBitmap
+        return article
     }
 
     private fun processOutOfWindowImages(
@@ -199,4 +330,16 @@ class NewsPresenter : MvpPresenter<NewsView>() {
     }
 
     private class ProcessedImageMeta(val images: Map<Int, Bitmap>, val from: Int, val to: Int)
+
+    private class ArticleMeta(val article: ArticleDomain, val withFilters: Boolean) {
+        companion object {
+            fun toArticleDomain(articles: List<ArticleMeta>): List<ArticleDomain> {
+                val refinedArticles = mutableListOf<ArticleDomain>()
+                articles.forEach {
+                    refinedArticles.add(it.article)
+                }
+                return refinedArticles
+            }
+        }
+    }
 }
